@@ -32,6 +32,9 @@ public class ZedSvoPlayback : MonoBehaviour
     [Tooltip("UI Image component to display the SVO video")]
     public UnityEngine.UI.Image displayImage;
     
+    [Tooltip("UI Image component to display the right eye video")]
+    public UnityEngine.UI.Image rightDisplayImage;
+    
     // ZED camera instance
     private sl.ZEDCamera zedCamera;
     
@@ -99,6 +102,17 @@ public class ZedSvoPlayback : MonoBehaviour
             Debug.LogError("Failed to create left texture");
         }
         
+        // Create right texture before starting playback
+        Texture2D rightTexture = zedCamera.CreateTextureImageType(sl.VIEW.RIGHT);
+        if (rightTexture != null)
+        {
+            Debug.Log("Right texture created: " + rightTexture.width + "x" + rightTexture.height);
+        }
+        else
+        {
+            Debug.LogError("Failed to create right texture");
+        }
+        
         // Start playback
         isPlaying = true;
     }
@@ -130,15 +144,15 @@ public class ZedSvoPlayback : MonoBehaviour
                 Texture2D leftTexture = zedCamera.GetTexture(sl.ZEDCamera.TYPE_VIEW.RETRIEVE_IMAGE, (int)sl.VIEW.LEFT); // 使用正确的类型和选项
                 if (leftTexture != null && displayImage != null)
                 {
-                    Debug.Log("Texture obtained: " + leftTexture.width + "x" + leftTexture.height + ", format: " + leftTexture.format);
+                    Debug.Log("Left texture obtained: " + leftTexture.width + "x" + leftTexture.height + ", format: " + leftTexture.format);
                     
                     // Create sprite directly from the texture
                     displayImage.sprite = Sprite.Create(leftTexture, new UnityEngine.Rect(0, 0, leftTexture.width, leftTexture.height), new Vector2(0.5f, 0.5f));
-                    Debug.Log("Sprite created and applied to UI Image");
+                    Debug.Log("Left sprite created and applied to UI Image");
                 }
                 else if (leftTexture != null)
                 {
-                    Debug.Log("Texture obtained but no UI Image assigned: " + leftTexture.width + "x" + leftTexture.height);
+                    Debug.Log("Left texture obtained but no UI Image assigned: " + leftTexture.width + "x" + leftTexture.height);
                 }
                 else
                 {
@@ -149,6 +163,32 @@ public class ZedSvoPlayback : MonoBehaviour
                     {
                         Debug.Log("Left texture recreated: " + leftTexture.width + "x" + leftTexture.height);
                         displayImage.sprite = Sprite.Create(leftTexture, new UnityEngine.Rect(0, 0, leftTexture.width, leftTexture.height), new Vector2(0.5f, 0.5f));
+                    }
+                }
+                
+                // Apply right texture to UI Image
+                Texture2D rightTexture = zedCamera.GetTexture(sl.ZEDCamera.TYPE_VIEW.RETRIEVE_IMAGE, (int)sl.VIEW.RIGHT); // 使用正确的类型和选项
+                if (rightTexture != null && rightDisplayImage != null)
+                {
+                    Debug.Log("Right texture obtained: " + rightTexture.width + "x" + rightTexture.height + ", format: " + rightTexture.format);
+                    
+                    // Create sprite directly from the texture
+                    rightDisplayImage.sprite = Sprite.Create(rightTexture, new UnityEngine.Rect(0, 0, rightTexture.width, rightTexture.height), new Vector2(0.5f, 0.5f));
+                    Debug.Log("Right sprite created and applied to UI Image");
+                }
+                else if (rightTexture != null)
+                {
+                    Debug.Log("Right texture obtained but no UI Image assigned: " + rightTexture.width + "x" + rightTexture.height);
+                }
+                else
+                {
+                    Debug.LogWarning("Failed to get right texture");
+                    // 尝试重新创建纹理
+                    rightTexture = zedCamera.CreateTextureImageType(sl.VIEW.RIGHT);
+                    if (rightTexture != null && rightDisplayImage != null)
+                    {
+                        Debug.Log("Right texture recreated: " + rightTexture.width + "x" + rightTexture.height);
+                        rightDisplayImage.sprite = Sprite.Create(rightTexture, new UnityEngine.Rect(0, 0, rightTexture.width, rightTexture.height), new Vector2(0.5f, 0.5f));
                     }
                 }
                 
