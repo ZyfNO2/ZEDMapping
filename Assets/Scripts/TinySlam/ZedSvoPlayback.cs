@@ -24,6 +24,14 @@ public class ZedSvoPlayback : MonoBehaviour
     [Tooltip("Depth mode for the ZED camera")]
     public sl.DEPTH_MODE depthMode = sl.DEPTH_MODE.NEURAL;
     
+    [Header("Color Correction")]
+    [Tooltip("0: No correction, 1: Swap R&G, 2: Swap R&B, 3: Swap G&B")]
+    public int colorCorrectMode = 2;
+    
+    [Header("UI Display")]
+    [Tooltip("UI Image component to display the SVO video")]
+    public UnityEngine.UI.Image displayImage;
+    
     // ZED camera instance
     private sl.ZEDCamera zedCamera;
     
@@ -36,9 +44,6 @@ public class ZedSvoPlayback : MonoBehaviour
     private float lastFrameTime = 0.0f;
     
     // Rendering objects
-    private GameObject renderingPlane;
-    private MeshRenderer planeRenderer;
-    private Material planeMaterial;
     private Camera targetCamera;
     
     // Runtime parameters
@@ -73,23 +78,14 @@ public class ZedSvoPlayback : MonoBehaviour
         runtimeParameters = new sl.RuntimeParameters();
         runtimeParameters.confidenceThreshold = 95;
         
-        // Create a plane to display the SVO video
-        renderingPlane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        planeRenderer = renderingPlane.GetComponent<MeshRenderer>();
-        planeMaterial = new Material(Shader.Find("Unlit/Texture"));
-        planeRenderer.material = planeMaterial;
-        
-        // Position the plane in front of the camera
-        targetCamera = GetComponent<Camera>();
-        if (targetCamera == null)
+        // Check if displayImage is assigned
+        if (displayImage != null)
         {
-            targetCamera = Camera.main;
+            Debug.Log("UI Image assigned: " + displayImage.name);
         }
-        if (targetCamera != null)
+        else
         {
-            renderingPlane.transform.position = targetCamera.transform.position + targetCamera.transform.forward * 5f;
-            renderingPlane.transform.rotation = targetCamera.transform.rotation;
-            renderingPlane.transform.localScale = new Vector3(5f, 1f, 5f);
+            Debug.LogWarning("No UI Image assigned. Please assign an Image component in the Inspector.");
         }
         
         // Create left texture before starting playback
@@ -130,22 +126,29 @@ public class ZedSvoPlayback : MonoBehaviour
                 zedCamera.RetrieveTextures();
                 zedCamera.UpdateTextures();
                 
-                // Apply texture to plane
+                // Apply texture to UI Image
                 Texture2D leftTexture = zedCamera.GetTexture(sl.ZEDCamera.TYPE_VIEW.RETRIEVE_IMAGE, (int)sl.VIEW.LEFT); // 使用正确的类型和选项
-                if (leftTexture != null)
+                if (leftTexture != null && displayImage != null)
                 {
-                    planeMaterial.mainTexture = leftTexture;
-                    Debug.Log("Texture applied: " + leftTexture.width + "x" + leftTexture.height);
+                    Debug.Log("Texture obtained: " + leftTexture.width + "x" + leftTexture.height + ", format: " + leftTexture.format);
+                    
+                    // Create sprite directly from the texture
+                    displayImage.sprite = Sprite.Create(leftTexture, new UnityEngine.Rect(0, 0, leftTexture.width, leftTexture.height), new Vector2(0.5f, 0.5f));
+                    Debug.Log("Sprite created and applied to UI Image");
+                }
+                else if (leftTexture != null)
+                {
+                    Debug.Log("Texture obtained but no UI Image assigned: " + leftTexture.width + "x" + leftTexture.height);
                 }
                 else
                 {
                     Debug.LogWarning("Failed to get left texture");
                     // 尝试重新创建纹理
                     leftTexture = zedCamera.CreateTextureImageType(sl.VIEW.LEFT);
-                    if (leftTexture != null)
+                    if (leftTexture != null && displayImage != null)
                     {
                         Debug.Log("Left texture recreated: " + leftTexture.width + "x" + leftTexture.height);
-                        planeMaterial.mainTexture = leftTexture;
+                        displayImage.sprite = Sprite.Create(leftTexture, new UnityEngine.Rect(0, 0, leftTexture.width, leftTexture.height), new Vector2(0.5f, 0.5f));
                     }
                 }
                 
@@ -166,12 +169,18 @@ public class ZedSvoPlayback : MonoBehaviour
                     // Reset to start
                     zedCamera.SetSVOPosition(0);
                     currentFrame = 0;
+                    Debug.Log("End of SVO file reached, looping back to start");
                 }
                 else
                 {
                     // Stop playback
                     isPlaying = false;
+                    Debug.Log("End of SVO file reached, playback stopped");
                 }
+            }
+            else
+            {
+                Debug.LogError("Grab error: " + err);
             }
         }
     }
@@ -189,16 +198,8 @@ public class ZedSvoPlayback : MonoBehaviour
         if (zedCamera != null && zedCamera.IsOpened())
         {
             zedCamera.Close();
+            Debug.Log("ZED camera closed");
         }
-        
-        if (renderingPlane != null)
-        {
-            Destroy(renderingPlane);
-        }
-        
-        if (planeMaterial != null)
-        {
-            Destroy(planeMaterial);
-        }
+        Debug.Log("ZedSvoPlayback component destroyed");
     }
 }
